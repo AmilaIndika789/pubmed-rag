@@ -71,7 +71,7 @@ def search_pubmed(query: str, retmax: int = 20) -> list[str]:
     load_env()
     ncbi_api_key = os.getenv("NCBI_API_KEY")
 
-    params: dict[str, str | int] = {
+    params: dict[str, str | int | None] = {
         "db": "pubmed",
         "term": query,
         "retmax": retmax,
@@ -101,7 +101,7 @@ def fetch_pubmed_xml(pmids: list[str]) -> str:
     load_env()
     ncbi_api_key = os.getenv("NCBI_API_KEY")
 
-    params: dict[str, str] = {
+    params: dict[str, str | None] = {
         "db": "pubmed",
         "id": ",".join(pmids),
         "retmode": "xml",
@@ -266,17 +266,41 @@ def fetch_articles_for_topic(
     return parse_pubmed_xml(xml_text=xml_text, topic=topic)
 
 
+def remove_duplicates(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Deduplicate article records by PMID."""
+    deduped: dict[str, dict[str, Any]] = {}
+    for article in articles:
+        deduped[article["pmid"]] = article
+    return list(deduped.values())
+
+
+def save_articles(
+    articles: list[dict[str, Any]], output_path: Path = OUTPUT_PATH
+) -> None:
+    """Save article records as pretty JSON."""
+    ensure_output_dir(output_path)
+    with output_path.open("w", encoding="utf-8") as f:
+        json.dump(articles, f, indent=2, ensure_ascii=False)
+
+
 def main() -> None:
     """
     Main ingestion pipeline.
     """
-    topic = "diabetes"
-    query = TOPICS[topic]
-    print(f"Fetching topic={topic} | query={query}")
-    topic_articles = fetch_articles_for_topic(
-        topic=topic, query=query, retmax=RETRIEVAL_MAXIMUM
-    )
-    print(f"  Retrieved {len(topic_articles)} usable articles")
+    all_articles: list[dict[str, Any]] = []
+
+    for topic, query in TOPICS.items():
+        print(f"Fetching topic={topic} | query={query}")
+        topic_articles = fetch_articles_for_topic(
+            topic=topic, query=query, retmax=RETRIEVAL_MAXIMUM
+        )
+        print(f"  Retrieved {len(topic_articles)} usable articles")
+        all_articles.extend(topic_articles)
+
+    all_articles = remove_duplicates(all_articles)
+    save_articles(all_articles)
+
+    print(f"Saved {len(all_articles)} articles to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
