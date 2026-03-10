@@ -2,7 +2,7 @@
 Fetch PubMed articles for a small set of medical topics and save structured JSON.
 
 Run:
-    python ingest/pubmed_fetcher.py
+    python -m ingest.pubmed_fetcher
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import requests
 import xml.etree.ElementTree as ET
 
 from utils import load_env
+from utils import ensure_output_dir
 
 PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
@@ -29,11 +30,6 @@ TOPICS = {
 }
 
 RETRIEVAL_MAXIMUM = 30
-
-
-def ensure_output_dir(path: Path) -> None:
-    """Create parent directories if they do not already exist."""
-    path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def safe_get(
