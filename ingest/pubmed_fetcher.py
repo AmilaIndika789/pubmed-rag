@@ -15,8 +15,6 @@ from typing import Any
 import requests
 import xml.etree.ElementTree as ET
 
-import xml.dom.minidom
-
 from utils import load_env
 
 PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -29,6 +27,8 @@ TOPICS = {
     "hypertension": "ACE inhibitors hypertension side effects guideline",
     "asthma": "childhood asthma inhaled corticosteroids",
 }
+
+RETRIEVAL_MAXIMUM = 30
 
 
 def ensure_output_dir(path: Path) -> None:
@@ -224,6 +224,48 @@ def parse_single_article(
     }
 
 
+def parse_pubmed_xml(xml_text: str, topic: str) -> list[dict[str, Any]]:
+    """
+    Parse PubMed XML into a list of structured article records.
+    """
+    if not xml_text.strip():
+        return []
+
+    root = ET.fromstring(xml_text)
+    articles: list[dict[str, Any]] = []
+
+    for article_elem in root.findall(".//PubmedArticle"):
+        record = parse_single_article(article_elem, topic=topic)
+        if record is not None:
+            articles.append(record)
+
+    return articles
+
+
+def save_raw_xml_pubmed_articles(raw_xml_text: str, xml_path: str, topic: str) -> None:
+    """
+    Save raw XML PubMed articles
+    """
+    with open(f"{xml_path}/{topic}_pubmed.xml", "w", encoding="utf-8") as f:
+        f.write(raw_xml_text)
+
+
+def fetch_articles_for_topic(
+    topic: str, query: str, retmax: int = 20
+) -> list[dict[str, Any]]:
+    """
+    Search and fetch articles for one topic.
+    """
+    pmids = search_pubmed(query=query, retmax=retmax)
+    time.sleep(0.4)  # light throttle
+    xml_text = fetch_pubmed_xml(pmids)
+    save_raw_xml_pubmed_articles(
+        raw_xml_text=xml_text, xml_path="ingest/data/XML", topic=topic
+    )
+    time.sleep(0.4)
+    return parse_pubmed_xml(xml_text=xml_text, topic=topic)
+
+
 def main() -> None:
     """
     Main ingestion pipeline.
@@ -231,15 +273,10 @@ def main() -> None:
     topic = "diabetes"
     query = TOPICS[topic]
     print(f"Fetching topic={topic} | query={query}")
-    pmids = search_pubmed(query=query)
-    pubmed_xml = fetch_pubmed_xml(pmids)
-
-    with open(f"ingest/data/XML/{topic}_pubmed.xml", "w", encoding="utf-8") as f:
-        f.write(pubmed_xml)
-
-    root = ET.fromstring(pubmed_xml)
-    article = root.find(".//PubmedArticle")
-    print(json.dumps(parse_single_article(article, topic), indent=4))
+    topic_articles = fetch_articles_for_topic(
+        topic=topic, query=query, retmax=RETRIEVAL_MAXIMUM
+    )
+    print(f"  Retrieved {len(topic_articles)} usable articles")
 
 
 if __name__ == "__main__":
