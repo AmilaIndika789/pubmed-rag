@@ -12,6 +12,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from utils import ensure_output_dir
+
 INPUT_PATH = Path("ingest/data/JSON/pubmed_articles.json")
 FIXED_OUTPUT_PATH = Path("chunking/data/JSON/chunks_fixed.jsonl")
 
@@ -100,6 +102,14 @@ def build_fixed_chunks(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return all_chunks
 
 
+def save_jsonl(records: list[dict[str, Any]], path: Path) -> None:
+    """Save records in JSONL format."""
+    ensure_output_dir(path)
+    with path.open("w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
 def main() -> None:
     """
     Main chunking pipeline.
@@ -107,7 +117,11 @@ def main() -> None:
     articles = load_articles()
 
     fixed_chunks = build_fixed_chunks(articles)
+
     print(f"Fixed chunks: {json.dumps(fixed_chunks, indent=2)}")
+    save_jsonl(fixed_chunks, FIXED_OUTPUT_PATH)
+
+    print(f"Saved {len(fixed_chunks)} fixed chunks to {FIXED_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
