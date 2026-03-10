@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 import requests
 
+import xml.dom.minidom
+
 from utils import load_env
 
 PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -79,8 +81,34 @@ def search_pubmed(query: str, retmax: int = 20) -> list[str]:
 
     response = safe_get(PUBMED_ESEARCH_URL, params=params)
     payload = response.json()
-    print(f"Payload: {json.dumps(payload, indent=4)}")
     return payload.get("esearchresult", {}).get("idlist", [])
+
+
+def fetch_pubmed_xml(pmids: list[str]) -> str:
+    """
+    Fetch PubMed records as XML for a list of PMIDs.
+
+    Args:
+        pmids: List of PubMed IDs.
+
+    Returns:
+        Raw XML string.
+    """
+    if not pmids:
+        return ""
+
+    load_env()
+    ncbi_api_key = os.getenv("NCBI_API_KEY")
+
+    params: dict[str, str] = {
+        "db": "pubmed",
+        "id": ",".join(pmids),
+        "retmode": "xml",
+        "api_key": ncbi_api_key,
+    }
+
+    response = safe_get(PUBMED_EFETCH_URL, params=params)
+    return response.text
 
 
 def main() -> None:
@@ -92,6 +120,12 @@ def main() -> None:
     print(f"Fetching topic={topic} | query={query}")
     pmids = search_pubmed(query=query)
     print(f"PMIDs: {pmids}")
+    pubmed_xml = fetch_pubmed_xml(pmids)
+
+    dom = xml.dom.minidom.parseString(pubmed_xml)
+    pretty_xml = dom.toprettyxml(indent="  ")
+
+    print(f"PubMed text: {pretty_xml}")
 
 
 if __name__ == "__main__":
