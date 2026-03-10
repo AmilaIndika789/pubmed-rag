@@ -15,7 +15,8 @@ from typing import Any
 from utils import ensure_output_dir
 
 INPUT_PATH = Path("ingest/data/JSON/pubmed_articles.json")
-FIXED_OUTPUT_PATH = Path("chunking/data/JSON/chunks_fixed.jsonl")
+FIXED_OUTPUT_PATH = Path("chunking/data/chunks_fixed.jsonl")
+SECTION_OUTPUT_PATH = Path("chunking/data/chunks_section.jsonl")
 
 CHUNK_SIZE = 100  # In words
 CHUNK_OVERLAP = 20  # In words
@@ -68,6 +69,106 @@ def fixed_size_chunk(
     return chunks
 
 
+def detect_labeled_sections(abstract: str) -> list[tuple[str, str]]:
+    """
+    Try to detect labeled abstract sections such as:
+    Background, Methods, Results, Conclusion.
+
+    Returns:
+        List of tuples: [(section_name, section_text), ...]
+    """
+    section_headers: list[str] = [
+        "Aim",
+        "Purpose",
+        "Background",
+        "Introduction",
+        "Methods",
+        "Method",
+        "Results",
+        "Outcomes",
+        "Findings",
+        "Conclusion",
+        "Conclusions",
+        "Objective",
+        "Objectives",
+        "Benefits",
+        "Recommendations",
+        "Validity",
+        "Summary",
+    ]
+
+    pattern = re.compile(
+        rf"(?P<label>{'|'.join(section_headers)})\s*:\s*",
+        flags=re.IGNORECASE,
+    )
+
+    matches = list(pattern.finditer(abstract))
+    if not matches:
+        return []
+
+    sections: list[tuple[str, str]] = []
+    for idx, match in enumerate(matches):
+        label = match.group("label").strip().lower()
+        start = match.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(abstract)
+        content = abstract[start:end].strip()
+        if content:
+            sections.append((label, content))
+
+    return sections
+
+
+def fallback_paragraph_sections(abstract: str) -> list[tuple[str, str]]:
+    """
+    Fallback splitter when no labeled sections are found.
+
+    If there are paragraphs, use them. Otherwise return the whole abstract.
+    """
+    paragraphs = [p.strip() for p in abstract.split("\n\n") if p.strip()]
+    if len(paragraphs) > 1:
+        return [(f"paragraph_{i}", p) for i, p in enumerate(paragraphs)]
+
+    clean_abstract = abstract.strip()
+    return [("abstract", clean_abstract)] if clean_abstract else []
+
+
+def section_based_chunk(article: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Create section-based chunks for one article.
+
+    Each output chunk is already a structured record.
+    """
+    abstract = article.get("abstract", "")
+    title = article.get("title", "")
+    pmid = article.get("pmid", "")
+    topic = article.get("topic", "")
+
+    sections = detect_labeled_sections(abstract)
+    if not sections:
+        sections = fallback_paragraph_sections(abstract)
+
+    chunks: list[dict[str, Any]] = []
+    for idx, (section_name, section_text) in enumerate(sections):
+        chunk_text = normalize_text(section_text)
+        if not chunk_text:
+            continue
+
+        chunks.append(
+            {
+                "chunk_id": f"{pmid}_section_{idx}",
+                "pmid": pmid,
+                "title": title,
+                "section": section_name,
+                "chunk_index": idx,
+                "strategy": "section",
+                "topic": topic,
+                "text": chunk_text,
+            }
+        )
+
+    return chunks
+
+
 def build_fixed_chunks(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Build fixed-size chunks for all articles.
@@ -102,6 +203,16 @@ def build_fixed_chunks(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return all_chunks
 
 
+def build_section_chunks(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Build section-based chunks for all articles.
+    """
+    all_chunks: list[dict[str, Any]] = []
+    for article in articles:
+        all_chunks.extend(section_based_chunk(article))
+    return all_chunks
+
+
 def save_jsonl(records: list[dict[str, Any]], path: Path) -> None:
     """Save records in JSONL format."""
     ensure_output_dir(path)
@@ -117,11 +228,13 @@ def main() -> None:
     articles = load_articles()
 
     fixed_chunks = build_fixed_chunks(articles)
+    section_chunks = build_section_chunks(articles)
 
-    print(f"Fixed chunks: {json.dumps(fixed_chunks, indent=2)}")
     save_jsonl(fixed_chunks, FIXED_OUTPUT_PATH)
+    save_jsonl(section_chunks, SECTION_OUTPUT_PATH)
 
     print(f"Saved {len(fixed_chunks)} fixed chunks to {FIXED_OUTPUT_PATH}")
+    print(f"Saved {len(section_chunks)} section chunks to {SECTION_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
