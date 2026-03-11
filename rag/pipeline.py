@@ -16,19 +16,12 @@ from vectordb.store import search
 
 """
     Available models models in free tier:
-        Gemini:
-            * gemini-3.1-flash-lite-preview (500 Requests/Day)
-            * gemini-3-flash-preview        (20 Requests/Day)
-            * gemini-2.5-flash              (20 Requests/Day)
-            * gemini-2.5-flash-lite         (20 Requests/Day)
-        
-        Gemma 3B:
-            * gemma-3-27b-it    (14400 Requests/Day)
-            * gemma-3-12b-it    (14400 Requests/Day)
-            * gemma-3-4b-it     (14400 Requests/Day)
-            * gemma-3-1b-it     (14400 Requests/Day)
+        * gemini-3.1-flash-lite-preview (500 Requests/Day)
+        * gemini-3-flash-preview        (20 Requests/Day)
+        * gemini-2.5-flash              (20 Requests/Day)
+        * gemini-2.5-flash-lite         (20 Requests/Day)
 """
-GEMINI_MODEL_NAME = "gemini-2.5-flash"
+GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
 
 
 def get_gemini_client() -> genai.Client:
