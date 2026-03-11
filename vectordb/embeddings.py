@@ -4,18 +4,22 @@ Embedding helpers for chunks and queries.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from numpy.typing import NDArray
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+from utils import load_env
 
 
 @lru_cache(maxsize=1)
 def get_embedding_model() -> SentenceTransformer:
     """Load and cache the embedding model."""
-    return SentenceTransformer(MODEL_NAME)
+    load_env()
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+    return SentenceTransformer(MODEL_NAME, token=HF_TOKEN)
 
 
 def embed_texts(texts: list[str], batch_size: int = 32) -> list[list[float]]:
