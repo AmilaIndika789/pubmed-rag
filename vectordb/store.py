@@ -2,18 +2,21 @@
 Index chunks into ChromaDB and provide retrieval.
 
 Run:
-    python -m vectordb.store
+    python -m vectordb.store --strategy section
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast, List
 
 import chromadb
 from chromadb.api import ClientAPI
 from chromadb.api.models import Collection
+from chromadb.api.types import Metadata, Embeddings
+
 
 from vectordb.embeddings import embed_texts, embed_query
 
@@ -83,8 +86,8 @@ def index_chunks(chunks: list[dict[str, Any]], collection_name: str) -> None:
     collection.upsert(
         ids=ids,
         documents=documents,
-        metadatas=metadatas,
-        embeddings=embeddings,
+        metadatas=cast(List[Metadata], metadatas),
+        embeddings=cast(Embeddings, embeddings),
     )
 
 
@@ -102,12 +105,13 @@ def search(
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
+        include=["documents", "metadatas", "distances"],
     )
 
     ids = results.get("ids", [[]])[0]
-    documents = results.get("documents", [[]])[0]
-    metadatas = results.get("metadatas", [[]])[0]
-    distances = results.get("distances", [[]])[0]
+    documents = (results.get("documents") or [[]])[0]
+    metadatas = (results.get("metadatas") or [[]])[0]
+    distances = (results.get("distances") or [[]])[0]
 
     structured_results: list[dict[str, Any]] = []
     for chunk_id, document, metadata, distance in zip(
@@ -142,9 +146,17 @@ def build_index_from_file(strategy: str) -> None:
     print(f"Indexed into Chroma collection: {collection_name}")
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--strategy", choices=["fixed", "section"], default="section")
+    return parser.parse_args()
+
+
 def main() -> None:
-    strategy = "fixed"
-    build_index_from_file(strategy=strategy)
+    """CLI entrypoint."""
+    args = parse_args()
+    build_index_from_file(strategy=args.strategy)
 
 
 if __name__ == "__main__":
