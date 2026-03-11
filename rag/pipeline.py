@@ -21,7 +21,10 @@ from vectordb.store import search
         * gemini-2.5-flash              (20 Requests/Day)
         * gemini-2.5-flash-lite         (20 Requests/Day)
 """
-GEMINI_MODEL_NAME = "gemini-2.5-flash-lite"
+GEMINI_MODEL_NAME = "gemini-3.1-flash-lite-preview"
+
+# Distance threshold to measure closeness of ChromaDB vectors
+MAX_DISTANCE_THRESHOLD = 1.0
 
 
 def get_gemini_client() -> genai.Client:
@@ -63,6 +66,7 @@ def generate_with_gemini(
     system_prompt = get_system_prompt(prompt_version)
     user_prompt = build_user_prompt(question=question, context=context)
 
+    # TODO: Graceful error handling
     response = client.models.generate_content(
         model=GEMINI_MODEL_NAME,
         contents=user_prompt,
@@ -87,6 +91,10 @@ def has_sufficient_context(
     """
     if not results:
         return False
+
+    print(
+        f"Results: {[{'pmid': result['pmid'], 'score': result['score']} for result in results]}"
+    )
 
     best_score = results[0]["score"]
     if best_score is None:
@@ -124,7 +132,9 @@ def answer_question(
     """
     retrieved_chunks = retrieve_chunks(query=question, top_k=top_k, strategy=strategy)
 
-    if not has_sufficient_context(retrieved_chunks):
+    if not has_sufficient_context(
+        retrieved_chunks, max_distance_threshold=MAX_DISTANCE_THRESHOLD
+    ):
         return {
             "question": question,
             "answer": "I don't have enough information from the retrieved articles.",
