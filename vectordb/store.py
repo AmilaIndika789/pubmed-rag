@@ -88,8 +88,50 @@ def index_chunks(chunks: list[dict[str, Any]], collection_name: str) -> None:
     )
 
 
-def main() -> None:
-    strategy = "section"
+def search(
+    query: str, top_k: int = 5, strategy: str = "section"
+) -> list[dict[str, Any]]:
+    """
+    Search the selected collection and return structured retrieval results.
+    """
+    collection_name = COLLECTION_NAMES[strategy]
+    collection = get_or_create_collection(collection_name)
+
+    query_embedding = embed_query(query)
+
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+    )
+
+    ids = results.get("ids", [[]])[0]
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+
+    structured_results: list[dict[str, Any]] = []
+    for chunk_id, document, metadata, distance in zip(
+        ids, documents, metadatas, distances
+    ):
+        structured_results.append(
+            {
+                "chunk_id": chunk_id,
+                "text": document,
+                "score": distance,  # Chroma distance; lower is generally better
+                "pmid": metadata.get("pmid", ""),
+                "title": metadata.get("title", ""),
+                "section": metadata.get("section", ""),
+                "chunk_index": metadata.get("chunk_index", -1),
+                "strategy": metadata.get("strategy", strategy),
+                "topic": metadata.get("topic", ""),
+            }
+        )
+
+    return structured_results
+
+
+def build_index_from_file(strategy: str) -> None:
+    """Index all chunks for the requested strategy."""
     chunk_file = CHUNK_FILES[strategy]
     collection_name = COLLECTION_NAMES[strategy]
 
@@ -98,6 +140,11 @@ def main() -> None:
 
     index_chunks(chunks, collection_name=collection_name)
     print(f"Indexed into Chroma collection: {collection_name}")
+
+
+def main() -> None:
+    strategy = "fixed"
+    build_index_from_file(strategy=strategy)
 
 
 if __name__ == "__main__":
