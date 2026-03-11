@@ -25,6 +25,7 @@ GEMINI_MODEL_NAME = "gemini-3.1-flash-lite-preview"
 
 # Distance threshold to measure closeness of ChromaDB vectors
 MAX_DISTANCE_THRESHOLD = 1.0
+MIN_CLOSE_CHUNKS = 4
 
 
 def get_gemini_client() -> genai.Client:
@@ -80,14 +81,22 @@ def generate_with_gemini(
 
 
 def has_sufficient_context(
-    results: list[dict[str, Any]], max_distance_threshold: float = 1.3
+    results: list[dict[str, Any]],
+    max_distance_threshold: float = 1.3,
+    min_good_chunks: int = 2,
 ) -> bool:
     """
-    Very simple sufficiency heuristic.
+    A simple sufficiency heuristic.
 
     Rules:
     - no results -> insufficient
-    - best result too far away -> insufficient
+    - at least 2 decent chunks is stronger evidence that retrieval is on-topic
+    - L2/Euclidean distance indicate closeness
+        * 0.0 - Same embedding
+        * around 0.3 - 0.7 : Strong semantic match
+        * around 0.7 - 1.1 : Maybe relevant/weak match
+        * around 1.1 - 1.5 : Often weak/noisy match
+        * up toward 2.0    : Mismatch
     """
     if not results:
         return False
@@ -96,11 +105,13 @@ def has_sufficient_context(
         f"Results: {[{'pmid': result['pmid'], 'score': result['score']} for result in results]}"
     )
 
-    best_score = results[0]["score"]
-    if best_score is None:
-        return False
+    good_chunks = [
+        result
+        for result in results
+        if result.get("score") is not None and result["score"] <= max_distance_threshold
+    ]
 
-    return best_score <= max_distance_threshold
+    return len(good_chunks) >= min_good_chunks
 
 
 def remove_duplicate_sources(chunks: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -133,7 +144,9 @@ def answer_question(
     retrieved_chunks = retrieve_chunks(query=question, top_k=top_k, strategy=strategy)
 
     if not has_sufficient_context(
-        retrieved_chunks, max_distance_threshold=MAX_DISTANCE_THRESHOLD
+        retrieved_chunks,
+        max_distance_threshold=MAX_DISTANCE_THRESHOLD,
+        min_good_chunks=MIN_CLOSE_CHUNKS,
     ):
         return {
             "question": question,
