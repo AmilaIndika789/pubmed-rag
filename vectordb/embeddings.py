@@ -8,6 +8,10 @@ import os
 from functools import lru_cache
 from sentence_transformers import SentenceTransformer
 import numpy as np
+from transformers import logging
+
+# This hides "INFO" and "WARNING" messages like the LOAD REPORT
+logging.set_verbosity_error()
 
 from utils import load_env
 
@@ -29,6 +33,7 @@ def embed_texts(texts: list[str], batch_size: int = 32) -> list[list[float]]:
         List of embedding vectors as Python lists.
     """
     model = get_embedding_model()
+
     embeddings: np.ndarray = model.encode(
         texts,
         batch_size=batch_size,
