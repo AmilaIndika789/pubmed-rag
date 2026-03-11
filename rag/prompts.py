@@ -51,7 +51,7 @@ def format_context(chunks: list[dict[str, Any]]) -> str:
             Title: {chunk.get("title", "")}
             Section: {chunk.get("section", "")}
             Content: {chunk.get("text", "")}
-        """
+            """
         )
         parts.append(content)
 
