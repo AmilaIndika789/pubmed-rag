@@ -4,6 +4,9 @@ Prompt templates and context formatting for RAG.
 
 from __future__ import annotations
 
+import inspect
+from typing import Any
+
 SYSTEM_PROMPT_V1 = """
 You are a medical literature QA assistant.
 
@@ -25,3 +28,31 @@ If the context is insufficient, respond exactly:
 If the retrieved articles disagree or show mixed findings, say so clearly.
 Be concise, cautious, and evidence-based.
 """.strip()
+
+
+def get_system_prompt(version: str = "v2") -> str:
+    """Return the selected system prompt."""
+    if version == "v1":
+        return SYSTEM_PROMPT_V1
+    return SYSTEM_PROMPT_V2
+
+
+def format_context(chunks: list[dict[str, Any]]) -> str:
+    """
+    Turn retrieved chunks into a formatted context block for the LLM.
+    """
+    parts: list[str] = []
+
+    for idx, chunk in enumerate(chunks, start=1):
+        content = inspect.cleandoc(
+            f"""
+            [Source {idx}]
+            PMID: {chunk.get("pmid", "")}
+            Title: {chunk.get("title", "")}
+            Section: {chunk.get("section", "")}
+            Content: {chunk.get("text", "")}
+        """
+        )
+        parts.append(content)
+
+    return "\n\n".join(parts)
