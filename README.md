@@ -314,4 +314,19 @@ I don't have enough information from the retrieved articles.
 
 ## Trade-offs
 
+- Main trade-offs:
+  - word-based chunking rather than exact tokenizer-based chunking,
+  - simple retrieval threshold heuristic rather than calibrated retrieval scoring,
+  - no automated retrieval metrics beyond simple qualitative evaluation.
+
+- These trade-offs were chosen to maximize clarity, reproducibility, and completion within project's timeline.
+
 ## Future work
+
+1. A reranking step using a cross-encoder before sending chunks to Gemini
+2. Hybrid retrieval combining BM25 and dense similarity
+3. Better automatic evaluation for retrieval and answer grounding
+4. Score-distribution and chunk-overlap visualization
+5. Citation highlighting at the chunk level
+6. Docker support for one-command execution
+7. A richer UI with feedback signals
