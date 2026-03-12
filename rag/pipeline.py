@@ -10,6 +10,7 @@ import inspect
 
 from google import genai
 from google.genai import errors
+import streamlit as st
 
 from utils import load_env
 from rag.prompts import format_context, get_system_prompt
@@ -32,7 +33,7 @@ MIN_CLOSE_CHUNKS = 4
 def get_gemini_client() -> genai.Client:
     """Create Gemini client using environment variable."""
     load_env()
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set.")
     return genai.Client(api_key=api_key)

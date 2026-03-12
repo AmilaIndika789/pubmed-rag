@@ -12,6 +12,7 @@ from transformers import logging
 
 # This hides "INFO" and "WARNING" messages like the LOAD REPORT
 logging.set_verbosity_error()
+import streamlit as st
 
 from utils import load_env
 
@@ -20,7 +21,7 @@ from utils import load_env
 def get_embedding_model() -> SentenceTransformer:
     """Load and cache the embedding model."""
     load_env()
-    HF_TOKEN = os.getenv("HF_TOKEN")
+    HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
     MODEL_NAME = "all-MiniLM-L6-v2"
     return SentenceTransformer(MODEL_NAME, token=HF_TOKEN)
 
