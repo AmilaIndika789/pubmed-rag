@@ -9,6 +9,7 @@ from typing import Any
 import inspect
 
 from google import genai
+from google.genai import errors
 
 from utils import load_env
 from rag.prompts import format_context, get_system_prompt
@@ -63,19 +64,32 @@ def generate_with_gemini(
     """
     Generate an answer with Gemini.
     """
-    client = get_gemini_client()
-    system_prompt = get_system_prompt(prompt_version)
-    user_prompt = build_user_prompt(question=question, context=context)
 
-    # TODO: Graceful error handling
-    response = client.models.generate_content(
-        model=GEMINI_MODEL_NAME,
-        contents=user_prompt,
-        config={
-            "system_instruction": system_prompt,
-            "temperature": 0.2,
-        },
-    )
+    try:
+        client = get_gemini_client()
+        system_prompt = get_system_prompt(prompt_version)
+        user_prompt = build_user_prompt(question=question, context=context)
+
+        response = client.models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=user_prompt,
+            config={
+                "system_instruction": system_prompt,
+                "temperature": 0.2,
+            },
+        )
+
+    except errors.ClientError as e:
+        print(f"Client Error: {e}")
+        return "There was an error processing the request."
+
+    except errors.APIError as e:
+        print(f"API Error: {e}")
+        return "Service temporarily unavailable. Please try again later."
+
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        return "An unexpected error occurred."
 
     return response.text.strip() if response.text else ""
 
