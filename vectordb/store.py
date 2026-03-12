@@ -17,7 +17,6 @@ from chromadb.api import ClientAPI
 from chromadb.api.models import Collection
 from chromadb.api.types import Metadata, Embeddings
 
-
 from vectordb.embeddings import embed_texts, embed_query
 
 
@@ -89,6 +88,26 @@ def index_chunks(chunks: list[dict[str, Any]], collection_name: str) -> None:
         metadatas=cast(List[Metadata], metadatas),
         embeddings=cast(Embeddings, embeddings),
     )
+
+
+def ensure_collection_ready(strategy: str = "section") -> int:
+    """
+    Ensure a Chroma collection exists and is populated.
+
+    Returns:
+        Number of records in the ready collection.
+    """
+    collection_name = COLLECTION_NAMES[strategy]
+    collection = get_or_create_collection(collection_name)
+
+    current_count = collection.count()
+    if current_count > 0:
+        return current_count
+
+    chunks = load_chunks(CHUNK_FILES[strategy])
+    index_chunks(chunks, collection_name=collection_name)
+
+    return collection.count()
 
 
 def search(
