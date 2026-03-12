@@ -8,13 +8,13 @@ A minimal **end-to-end medical Retrieval-Augmented Generation (RAG) system** tha
 
 This project answers medical literature questions using only retrieved PubMed article context. The pipeline:
 
-1. fetches article metadata and abstracts from PubMed using National Center for Biotechnology Information (NCBI) E-utilities,
-2. stores the raw data in structured JSON,
-3. creates chunks using both fixed-size and section-based strategies,
-4. embeds chunks with `sentence-transformers/all-MiniLM-L6-v2`,
-5. stores them in ChromaDB with metadata,
-6. retrieves top-k relevant chunks for a user query,
-7. prompts Gemini to answer using only the retrieved context and cite PMIDs,
+1. fetches article metadata and abstracts from PubMed using National Center for Biotechnology Information (NCBI) E-utilities
+2. stores the raw data in structured JSON
+3. creates chunks using both fixed-size and section-based strategies
+4. embeds chunks with `sentence-transformers/all-MiniLM-L6-v2`
+5. stores them in ChromaDB with metadata
+6. retrieves top-k relevant chunks for a user query
+7. prompts Gemini to answer using only the retrieved context and cite PMIDs
 8. returns the answer and sources in a Streamlit app.
 
 ## Tech stack
@@ -47,9 +47,11 @@ pubmed-rag/
 ├── rag/
 │   ├── pipeline.py
 │   └── prompts.py
+├── documents/
+│   └── PubMed_RAG_Write_up.pdf
 ├── evaluate/
 │   └── test_queries.py
-└── app.py
+├── app.py
 └── utils.py
 ```
 
@@ -113,10 +115,10 @@ Run the project in this order.
    ```
 
    This script:
-   - queries PubMed with esearch,
-   - fetches article metadata and abstracts with efetch,
-   - saves raw XML data to `ingest/data/XML/<topic>_pubmed.xml`,
-   - preserves title, abstract, authors, publication date, PMID, and MeSH terms,
+   - queries PubMed with esearch
+   - fetches article metadata and abstracts with efetch
+   - saves raw XML data to `ingest/data/XML/<topic>_pubmed.xml`
+   - preserves title, abstract, authors, publication date, PMID, and MeSH terms
    - saves structured JSON output to `ingest/data/JSON/pubmed_articles.json`.
 
 2. Create chunk files
@@ -137,9 +139,9 @@ Run the project in this order.
    ```
 
    This:
-   - embeds all chunks,
-   - stores them in ChromaDB,
-   - preserves metadata for retrieval,
+   - embeds all chunks
+   - stores them in ChromaDB
+   - preserves metadata for retrieval
    - creates persistent local collections.
 
 4. Run retrieval evaluation
@@ -157,10 +159,10 @@ Run the project in this order.
    ```
 
    The UI includes:
-   - a text input for the medical question,
-   - a Search button,
-   - generated answer display,
-   - source citations with PMIDs and titles,
+   - a text input for the medical question
+   - a Search button
+   - generated answer display
+   - source citations with PMIDs and titles
    - optionally the retrieved chunks.
 
 6. Example workflow
@@ -204,8 +206,8 @@ This project implements two chunking strategies.
 
 1. Fixed-size chunking: A simple overlapping word-based chunking approach over article title + abstract.
    - Why I included it:
-     - simple baseline,
-     - robust to inconsistent formatting,
+     - simple baseline
+     - robust to inconsistent formatting
      - easy to reproduce.
 
    - Trade-off:
@@ -214,12 +216,12 @@ This project implements two chunking strategies.
 2. Section-based chunking: A structure-aware approach that looks for labeled abstract sections such as, Background, Methods, Results, and Conclusion.
    - If the abstract is unlabeled, the code falls back to paragraph-based or full-abstract chunking.
    - Why I included it:
-     - better semantic coherence,
-     - better alignment with how medical abstracts are structured,
+     - better semantic coherence
+     - better alignment with how medical abstracts are structured
      - usually better for grounded citation.
 
    - Trade-off:
-     - depends on article formatting,
+     - depends on article formatting
      - section labels are not always consistent.
 
 #### Recommendation
@@ -230,15 +232,15 @@ My recommended default strategy is section-based chunking, with fixed-size chunk
 
 1. Embedding model
    - I used `sentence-transformers/all-MiniLM-L6-v2` because
-     - free and local,
-     - fast on CPU,
+     - free and local
+     - fast on CPU
      - strong enough for a small corpus.
 
 2. Vector DB
    - I used ChromaDB because it is:
-     - local,
-     - Python-native,
-     - free,
+     - local
+     - Python-native
+     - free
      - easy to persist and inspect.
    - Retrieval uses top-k similarity search with Euclidean distance (L2) over embedded chunks and returns metadata including: PMID, title, section, chunk index, chunking strategy, and topic.
 
@@ -246,24 +248,24 @@ My recommended default strategy is section-based chunking, with fixed-size chunk
 
 1. RAG pipeline
    - The RAG pipeline does the following:
-     - accept a user question,
-     - retrieve top-k relevant chunks,
-     - build a prompt containing the retrieved context and the question,
-     - send the prompt to Gemini,
+     - accept a user question
+     - retrieve top-k relevant chunks
+     - build a prompt containing the retrieved context and the question
+     - send the prompt to Gemini
      - return an answer with citations.
 2. Prompt design
    - Prompt v1
      - The first version instructed the model to:
-       - answer only from provided context,
-       - be concise,
-       - cite PMIDs,
+       - answer only from provided context
+       - be concise
+       - cite PMIDs
        - say context is insufficient when needed.
 
    - Prompt v2
      - The second version improved on v1 by:
-       - explicitly forbidding outside knowledge,
-       - requiring citations for important medical claims,
-       - using an exact fallback phrase for insufficient context,
+       - explicitly forbidding outside knowledge
+       - requiring citations for important medical claims
+       - using an exact fallback phrase for insufficient context
        - instructing the model to acknowledge mixed findings when sources disagree.
 
 ### Handling insufficient context
@@ -292,20 +294,21 @@ I don't have enough information from the retrieved articles.
 ### Evaluation
 
 - The retrieval evaluation script runs the sample-style questions, and for each query, the evaluation script prints:
-  - the retrieved chunks,
-  - titles and PMIDs,
-  - retrieval scores,
+  - the retrieved chunks
+  - titles and PMIDs
+  - retrieval scores
   - a short preview of each chunk.
 
 ### Error handling
 
 - I added basic error handling in the areas most likely to fail during a fresh run:
-  - PubMed request retry logic,
-  - skipping records with missing abstracts,
-  - safe handling of missing fields like MeSH terms,
-  - empty retrieval guard,
-  - missing Gemini API key check,
-  - simple insufficient-context fallback,
+  - PubMed request retry logic
+  - skipping records with missing abstracts
+  - safe handling of missing fields like MeSH terms
+  - empty retrieval guard
+  - missing Gemini API key check
+  - error handling for Gemini API failure
+  - simple insufficient-context fallback
   - empty UI input validation.
 
 ### User Interface
@@ -315,8 +318,8 @@ I don't have enough information from the retrieved articles.
 ## Trade-offs
 
 - Main trade-offs:
-  - word-based chunking rather than exact tokenizer-based chunking,
-  - simple retrieval threshold heuristic rather than calibrated retrieval scoring,
+  - word-based chunking rather than exact tokenizer-based chunking
+  - simple retrieval threshold heuristic rather than calibrated retrieval scoring
   - no automated retrieval metrics beyond simple qualitative evaluation.
 
 - These trade-offs were chosen to maximize clarity, reproducibility, and completion within project's timeline.
@@ -330,3 +333,4 @@ I don't have enough information from the retrieved articles.
 5. Citation highlighting at the chunk level
 6. Docker support for one-command execution
 7. A richer UI with feedback signals
+8. Improve the prompts with few-shot learning
