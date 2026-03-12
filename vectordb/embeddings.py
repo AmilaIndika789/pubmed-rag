@@ -21,7 +21,7 @@ def get_embedding_model() -> SentenceTransformer:
     """Load and cache the embedding model."""
     load_env()
     HF_TOKEN = os.getenv("HF_TOKEN")
-    MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+    MODEL_NAME = "all-MiniLM-L6-v2"
     return SentenceTransformer(MODEL_NAME, token=HF_TOKEN)
 
 
