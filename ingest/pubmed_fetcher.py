@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 import requests
 import xml.etree.ElementTree as ET
-import streamlit as st
 
 from utils import load_env
 from utils import ensure_output_dir
@@ -66,7 +65,7 @@ def search_pubmed(query: str, retmax: int = 20) -> list[str]:
     """
 
     load_env()
-    ncbi_api_key = st.secrets.get("NCBI_API_KEY") or os.getenv("NCBI_API_KEY")
+    ncbi_api_key = os.getenv("NCBI_API_KEY")
 
     params: dict[str, str | int | None] = {
         "db": "pubmed",
@@ -96,7 +95,7 @@ def fetch_pubmed_xml(pmids: list[str]) -> str:
         return ""
 
     load_env()
-    ncbi_api_key = st.secrets.get("NCBI_API_KEY") or os.getenv("NCBI_API_KEY")
+    ncbi_api_key = os.getenv("NCBI_API_KEY")
 
     params: dict[str, str | None] = {
         "db": "pubmed",
