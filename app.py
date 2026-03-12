@@ -74,20 +74,19 @@ def main() -> None:
     """Streamlit app entrypoint."""
     st.set_page_config(page_title="Medical Literature RAG Demo", layout="wide")
 
-    with st.spinner("Initializing vector database and models..."):
-        collection_counts = initialize_runtime_resources()
+    status_placeholder = st.empty()
 
     st.title("Medical Literature RAG Demo")
     st.caption("PubMed + ChromaDB + Gemini")
     st.warning("For demo purposes only. Not medical advice.")
 
-    with st.expander("System status", expanded=False):
-        st.write(
-            {
-                "section_collection_records": collection_counts["section"],
-                "fixed_collection_records": collection_counts["fixed"],
-            }
-        )
+    try:
+        status_placeholder.warning("System status: Loading ... Please wait!!")
+        initialize_runtime_resources()
+        status_placeholder.success("System status: Up and running. Ask your question.")
+    except Exception as exc:
+        status_placeholder.error(f"System status: Failed to initialize. {exc}")
+        st.stop()
 
     question = st.text_input("Enter a medical question")
     strategy = st.selectbox("Chunking strategy", ["section", "fixed"], index=0)
