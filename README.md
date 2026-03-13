@@ -47,10 +47,11 @@ pubmed-rag/
 ├── rag/
 │   ├── pipeline.py
 │   └── prompts.py
-├── documents/
-│   └── PubMed_RAG_Write_up.pdf
+├── docs/
 ├── evaluate/
 │   └── test_queries.py
+├── write-up
+│   └── PubMed_RAG_Write_up.pdf
 ├── app.py
 └── utils.py
 ```
